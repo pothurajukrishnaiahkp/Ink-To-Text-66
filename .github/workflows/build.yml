@@ -1,0 +1,264 @@
+name: Build KRISH Math Board APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Create Android Project Files First
+        shell: python3
+        run: |
+          import os
+
+          os.makedirs("app/src/main/java/com/krish/mathboard", exist_ok=True)
+
+          settings_gradle = "\n".join([
+              "pluginManagement {",
+              "    repositories {",
+              "        google()",
+              "        mavenCentral()",
+              "        gradlePluginPortal()",
+              "    }",
+              "}",
+              "dependencyResolutionManagement {",
+              "    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)",
+              "    repositories {",
+              "        google()",
+              "        mavenCentral()",
+              "    }",
+              "}",
+              "rootProject.name = 'KRISHMathBoard'",
+              "include ':app'"
+          ])
+          open("settings.gradle", "w", encoding="utf-8").write(settings_gradle)
+
+          build_gradle = "\n".join([
+              "plugins {",
+              "    id 'com.android.application' version '8.2.0' apply false",
+              "}"
+          ])
+          open("build.gradle", "w", encoding="utf-8").write(build_gradle)
+
+          app_build_gradle = "\n".join([
+              "plugins {",
+              "    id 'com.android.application'",
+              "}",
+              "android {",
+              "    namespace 'com.krish.mathboard'",
+              "    compileSdk 34",
+              "    defaultConfig {",
+              "        applicationId 'com.krish.mathboard'",
+              "        minSdk 21",
+              "        targetSdk 34",
+              "        versionCode 1",
+              "        versionName '1.0'",
+              "    }",
+              "    buildTypes {",
+              "        release {",
+              "            minifyEnabled false",
+              "        }",
+              "    }",
+              "    compileOptions {",
+              "        sourceCompatibility JavaVersion.VERSION_1_8",
+              "        targetCompatibility JavaVersion.VERSION_1_8",
+              "    }",
+              "}",
+              "dependencies {",
+              "}"
+          ])
+          open("app/build.gradle", "w", encoding="utf-8").write(app_build_gradle)
+
+          manifest_xml = "\n".join([
+              '<?xml version="1.0" encoding="utf-8"?>',
+              '<manifest xmlns:android="http://schemas.android.com/apk/res/android">',
+              '    <application',
+              '        android:allowBackup="true"',
+              '        android:label="KRISH Math Board"',
+              '        android:supportsRtl="true"',
+              '        android:theme="@android:style/Theme.DeviceDefault.NoActionBar">',
+              '        <activity',
+              '            android:name="com.krish.mathboard.MainActivity"',
+              '            android:exported="true"',
+              '            android:screenOrientation="sensorLandscape"',
+              '            android:configChanges="orientation|screenSize|keyboardHidden">',
+              '            <intent-filter>',
+              '                <action android:name="android.intent.action.MAIN" />',
+              '                <category android:name="android.intent.category.LAUNCHER" />',
+              '            </intent-filter>',
+              '        </activity>',
+              '    </application>',
+              '</manifest>'
+          ])
+          open("app/src/main/AndroidManifest.xml", "w", encoding="utf-8").write(manifest_xml)
+
+          main_java = "\n".join([
+              'package com.krish.mathboard;',
+              'import android.app.Activity;',
+              'import android.content.Context;',
+              'import android.graphics.Canvas;',
+              'import android.graphics.Color;',
+              'import android.graphics.Paint;',
+              'import android.graphics.Path;',
+              'import android.graphics.Typeface;',
+              'import android.os.Bundle;',
+              'import android.text.InputType;',
+              'import android.view.Gravity;',
+              'import android.view.MotionEvent;',
+              'import android.view.View;',
+              'import android.view.ViewGroup;',
+              'import android.widget.Button;',
+              'import android.widget.EditText;',
+              'import android.widget.HorizontalScrollView;',
+              'import android.widget.LinearLayout;',
+              'import android.widget.RelativeLayout;',
+              'import android.widget.TextView;',
+              'import android.widget.Toast;',
+              'import java.util.ArrayList;',
+              'import java.util.List;',
+              '',
+              'public class MainActivity extends Activity {',
+              '    private DrawingBoardView boardView;',
+              '    private LinearLayout mathTextContainer;',
+              '    private EditText mathInputBox;',
+              '',
+              '    @Override',
+              '    protected void onCreate(Bundle savedInstanceState) {',
+              '        super.onCreate(savedInstanceState);',
+              '        RelativeLayout rootLayout = new RelativeLayout(this);',
+              '        rootLayout.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));',
+              '',
+              '        boardView = new DrawingBoardView(this);',
+              '        boardView.setLayoutParams(new RelativeLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));',
+              '        rootLayout.addView(boardView);',
+              '',
+              '        HorizontalScrollView topScroll = new HorizontalScrollView(this);',
+              '        topScroll.setId(1001);',
+              '        topScroll.setBackgroundColor(Color.parseColor("#CC1E293B"));',
+              '        RelativeLayout.LayoutParams topParams = new RelativeLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);',
+              '        topParams.addRule(RelativeLayout.ALIGN_PARENT_TOP);',
+              '        topScroll.setLayoutParams(topParams);',
+              '',
+              '        LinearLayout toolbar = new LinearLayout(this);',
+              '        toolbar.setOrientation(LinearLayout.HORIZONTAL);',
+              '        toolbar.setPadding(16, 12, 16, 12);',
+              '        toolbar.setGravity(Gravity.CENTER_VERTICAL);',
+              '',
+              '        TextView title = new TextView(this);',
+              '        title.setText("KRISH Math Board  ");',
+              '        title.setTextColor(Color.parseColor("#FFD700"));',
+              '        title.setTextSize(18);',
+              '        title.setTypeface(Typeface.DEFAULT_BOLD);',
+              '        toolbar.addView(title);',
+              '',
+              '        toolbar.addView(createToolButton("White Pen", "#FFFFFF", "#000000", new View.OnClickListener() { public void onClick(View v) { boardView.setPenColor(Color.WHITE, 8f); } }));',
+              '        toolbar.addView(createToolButton("Yellow Pen", "#FFEB3B", "#000000", new View.OnClickListener() { public void onClick(View v) { boardView.setPenColor(Color.YELLOW, 8f); } }));',
+              '        toolbar.addView(createToolButton("Cyan Pen", "#00E5FF", "#000000", new View.OnClickListener() { public void onClick(View v) { boardView.setPenColor(Color.CYAN, 8f); } }));',
+              '        toolbar.addView(createToolButton("Red Pen", "#FF5252", "#FFFFFF", new View.OnClickListener() { public void onClick(View v) { boardView.setPenColor(Color.parseColor("#FF5252"), 8f); } }));',
+              '        toolbar.addView(createToolButton("Eraser", "#E0E0E0", "#000000", new View.OnClickListener() { public void onClick(View v) { boardView.enableEraser(); } }));',
+              '        toolbar.addView(createToolButton("Undo", "#607D8B", "#FFFFFF", new View.OnClickListener() { public void onClick(View v) { boardView.undo(); } }));',
+              '        toolbar.addView(createToolButton("Green Board", "#1B4D3E", "#FFFFFF", new View.OnClickListener() { public void onClick(View v) { boardView.changeBoardColor(Color.parseColor("#1B4D3E")); } }));',
+              '        toolbar.addView(createToolButton("Black Board", "#121212", "#FFFFFF", new View.OnClickListener() { public void onClick(View v) { boardView.changeBoardColor(Color.parseColor("#121212")); } }));',
+              '        toolbar.addView(createToolButton("White Board", "#F5F5F5", "#000000", new View.OnClickListener() { public void onClick(View v) { boardView.changeBoardColor(Color.parseColor("#F5F5F5")); boardView.setPenColor(Color.BLACK, 8f); } }));',
+              '        toolbar.addView(createToolButton("Clear All", "#D32F2F", "#FFFFFF", new View.OnClickListener() { public void onClick(View v) { boardView.clearBoard(); mathTextContainer.removeAllViews(); } }));',
+              '',
+              '        topScroll.addView(toolbar);',
+              '        rootLayout.addView(topScroll);',
+              '',
+              '        mathTextContainer = new LinearLayout(this);',
+              '        mathTextContainer.setOrientation(LinearLayout.VERTICAL);',
+              '        mathTextContainer.setPadding(32, 24, 32, 24);',
+              '        RelativeLayout.LayoutParams mathParams = new RelativeLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);',
+              '        mathParams.addRule(RelativeLayout.BELOW, 1001);',
+              '        mathParams.addRule(RelativeLayout.ALIGN_PARENT_LEFT);',
+              '        mathTextContainer.setLayoutParams(mathParams);',
+              '        rootLayout.addView(mathTextContainer);',
+              '',
+              '        LinearLayout bottomBar = new LinearLayout(this);',
+              '        bottomBar.setOrientation(LinearLayout.HORIZONTAL);',
+              '        bottomBar.setBackgroundColor(Color.parseColor("#DD1E293B"));',
+              '        bottomBar.setPadding(16, 8, 16, 8);',
+              '        bottomBar.setGravity(Gravity.CENTER_VERTICAL);',
+              '        RelativeLayout.LayoutParams bottomParams = new RelativeLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);',
+              '        bottomParams.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM);',
+              '        bottomBar.setLayoutParams(bottomParams);',
+              '',
+              '        mathInputBox = new EditText(this);',
+              '        mathInputBox.setHint("Equation (e.g. ax² + bx + c = 0)...");',
+              '        mathInputBox.setHintTextColor(Color.LTGRAY);',
+              '        mathInputBox.setTextColor(Color.WHITE);',
+              '        mathInputBox.setTextSize(16);',
+              '        mathInputBox.setInputType(InputType.TYPE_CLASS_TEXT);',
+              '        mathInputBox.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f));',
+              '        bottomBar.addView(mathInputBox);',
+              '',
+              '        final String[] symbols = {"²", "³", "√", "π", "θ", "÷", "×", "±", "≠", "≤", "≥"};',
+              '        HorizontalScrollView symbolScroll = new HorizontalScrollView(this);',
+              '        LinearLayout symbolLayout = new LinearLayout(this);',
+              '        symbolLayout.setOrientation(LinearLayout.HORIZONTAL);',
+              '        for (final String sym : symbols) {',
+              '            symbolLayout.addView(createToolButton(sym, "#37474F", "#FFFFFF", new View.OnClickListener() { public void onClick(View v) { mathInputBox.append(sym); } }));',
+              '        }',
+              '        symbolScroll.addView(symbolLayout);',
+              '        bottomBar.addView(symbolScroll);',
+              '',
+              '        bottomBar.addView(createToolButton("Print on Board", "#2E7D32", "#FFFFFF", new View.OnClickListener() {',
+              '            public void onClick(View v) {',
+              '                String text = mathInputBox.getText().toString().trim();',
+              '                if (!text.isEmpty()) { addMathFormulaToBoard(text); mathInputBox.setText(""); }',
+              '                else { Toast.makeText(MainActivity.this, "Type formula first!", Toast.LENGTH_SHORT).show(); }',
+              '            }',
+              '        }));',
+              '',
+              '        rootLayout.addView(bottomBar);',
+              '        setContentView(rootLayout);',
+              '    }',
+              '',
+              '    private Button createToolButton(String text, String bgHex, String textHex, View.OnClickListener listener) {',
+              '        Button btn = new Button(this);',
+              '        btn.setText(text);',
+              '        btn.setBackgroundColor(Color.parseColor(bgHex));',
+              '        btn.setTextColor(Color.parseColor(textHex));',
+              '        btn.setTextSize(13);',
+              '        btn.setAllCaps(false);',
+              '        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);',
+              '        params.setMargins(8, 4, 8, 4);',
+              '        btn.setPadding(24, 12, 24, 12);',
+              '        btn.setLayoutParams(params);',
+              '        btn.setOnClickListener(listener);',
+              '        return btn;',
+              '    }',
+              '',
+              '    private void addMathFormulaToBoard(String formula) {',
+              '        TextView formulaView = new TextView(this);',
+              '        formulaView.setText(formula);',
+              '        formulaView.setTextSize(28);',
+              '        formulaView.setTypeface(Typeface.SERIF, Typeface.BOLD_ITALIC);',
+              '        formulaView.setTextColor(Color.parseColor("#FFEB3B"));',
+              '        formulaView.setPadding(16, 8, 16, 8);',
+              '        formulaView.setOnLongClickListener(new View.OnLongClickListener() {',
+              '            public boolean onLongClick(View v) { mathTextContainer.removeView(v); return true; }',
+              '        });',
+              '        mathTextContainer.addView(formulaView);',
+              '    }',
+              '',
+              '    private static class DrawingBoardView extends View {',
+              '        private static class Stroke {',
+              '            Path path; Paint paint; boolean isEraser;',
+              '            Stroke(Path p, Paint pt, boolean e) { path = p; paint
